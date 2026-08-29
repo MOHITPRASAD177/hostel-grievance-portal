@@ -50,6 +50,8 @@ export interface PublicGrievance {
 	updatedAt: string;
 	deletedAt?: string | null;
 	archivedAt?: string | null;
+	isAnonymous?: boolean;
+	isCanary?: boolean;
 	attachments: PublicAttachment[];
 	comments: PublicComment[];
 }
@@ -75,6 +77,8 @@ export interface GrievanceRow {
 	updated_at: string;
 	deleted_at: string | null;
 	archived_at: string | null;
+	is_anonymous?: number | null;
+	is_canary?: number | null;
 }
 
 export interface CommentRow {
@@ -122,6 +126,8 @@ export interface AuditLogRow {
 	details: string | null;
 	ip_address: string | null;
 	user_agent: string | null;
+	prev_hash?: string | null;
+	entry_hash?: string | null;
 	created_at: string;
 }
 
@@ -133,6 +139,8 @@ export interface PublicAuditLog {
 	targetId: string | null;
 	details: Record<string, unknown> | null;
 	ipAddress: string | null;
+	prevHash?: string | null;
+	entryHash?: string | null;
 	createdAt: string;
 }
 
@@ -154,6 +162,20 @@ export interface PublicNotification {
 	message: string;
 	isRead: boolean;
 	createdAt: string;
+}
+
+export interface SecOpsTelemetry {
+	threatLevel: 'DEFCON_5_NORMAL' | 'DEFCON_3_ELEVATED' | 'DEFCON_1_CRITICAL';
+	activeBannedIpsCount: number;
+	bannedIps: Array<{ ip: string; blockedUntil: string | null; recentFailures: number }>;
+	totalSecurityEventsToday: number;
+	canaryTrapHits: number;
+	auditChainIntegrity: {
+		verified: boolean;
+		totalRecords: number;
+		latestHash: string | null;
+	};
+	recentSecurityAlerts: PublicAuditLog[];
 }
 
 export type ErrorCode =

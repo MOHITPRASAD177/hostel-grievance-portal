@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import type { Database } from 'better-sqlite3';
 import { HttpError } from '../http/errors.ts';
 import type {
@@ -12,7 +12,13 @@ import type {
 	SessionUser,
 	UserRow
 } from '../types/index.ts';
-import { toPublicAttachment, toPublicComment, toPublicGrievance, toPublicUser } from './map.ts';
+import {
+	toPseudonym,
+	toPublicAttachment,
+	toPublicComment,
+	toPublicGrievance,
+	toPublicUser
+} from './map.ts';
 
 export function findUserByEmail(db: Database, email: string): UserRow | undefined {
 	return db.prepare('SELECT * FROM users WHERE email = ?').get(email) as UserRow | undefined;
@@ -38,22 +44,22 @@ export function listGrievanceRowsForStudent(
 ): GrievanceRow[] {
 	if (options?.includeDeleted && options?.includeArchived) {
 		return db
-			.prepare('SELECT * FROM grievances WHERE student_id = ? ORDER BY created_at DESC')
+			.prepare('SELECT * FROM grievances WHERE student_id = ? AND (is_canary IS NULL OR is_canary = 0) ORDER BY created_at DESC')
 			.all(studentId) as GrievanceRow[];
 	}
 	if (options?.includeDeleted) {
 		return db
-			.prepare('SELECT * FROM grievances WHERE student_id = ? AND archived_at IS NULL ORDER BY created_at DESC')
+			.prepare('SELECT * FROM grievances WHERE student_id = ? AND archived_at IS NULL AND (is_canary IS NULL OR is_canary = 0) ORDER BY created_at DESC')
 			.all(studentId) as GrievanceRow[];
 	}
 	if (options?.includeArchived) {
 		return db
-			.prepare('SELECT * FROM grievances WHERE student_id = ? AND deleted_at IS NULL ORDER BY created_at DESC')
+			.prepare('SELECT * FROM grievances WHERE student_id = ? AND deleted_at IS NULL AND (is_canary IS NULL OR is_canary = 0) ORDER BY created_at DESC')
 			.all(studentId) as GrievanceRow[];
 	}
 	return db
 		.prepare(
-			'SELECT * FROM grievances WHERE student_id = ? AND deleted_at IS NULL AND archived_at IS NULL ORDER BY created_at DESC'
+			'SELECT * FROM grievances WHERE student_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND (is_canary IS NULL OR is_canary = 0) ORDER BY created_at DESC'
 		)
 		.all(studentId) as GrievanceRow[];
 }
@@ -63,21 +69,21 @@ export function listAllGrievanceRows(
 	options?: { includeDeleted?: boolean; includeArchived?: boolean }
 ): GrievanceRow[] {
 	if (options?.includeDeleted && options?.includeArchived) {
-		return db.prepare('SELECT * FROM grievances ORDER BY created_at DESC').all() as GrievanceRow[];
+		return db.prepare('SELECT * FROM grievances WHERE (is_canary IS NULL OR is_canary = 0) ORDER BY created_at DESC').all() as GrievanceRow[];
 	}
 	if (options?.includeDeleted) {
 		return db
-			.prepare('SELECT * FROM grievances WHERE archived_at IS NULL ORDER BY created_at DESC')
+			.prepare('SELECT * FROM grievances WHERE archived_at IS NULL AND (is_canary IS NULL OR is_canary = 0) ORDER BY created_at DESC')
 			.all() as GrievanceRow[];
 	}
 	if (options?.includeArchived) {
 		return db
-			.prepare('SELECT * FROM grievances WHERE deleted_at IS NULL ORDER BY created_at DESC')
+			.prepare('SELECT * FROM grievances WHERE deleted_at IS NULL AND (is_canary IS NULL OR is_canary = 0) ORDER BY created_at DESC')
 			.all() as GrievanceRow[];
 	}
 	return db
 		.prepare(
-			'SELECT * FROM grievances WHERE deleted_at IS NULL AND archived_at IS NULL ORDER BY created_at DESC'
+			'SELECT * FROM grievances WHERE deleted_at IS NULL AND archived_at IS NULL AND (is_canary IS NULL OR is_canary = 0) ORDER BY created_at DESC'
 		)
 		.all() as GrievanceRow[];
 }
@@ -98,20 +104,29 @@ export function findAttachmentRow(db: Database, id: string): AttachmentRow | und
 	return db.prepare('SELECT * FROM attachments WHERE id = ?').get(id) as AttachmentRow | undefined;
 }
 
-export function assembleGrievance(db: Database, row: GrievanceRow): PublicGrievance {
+export function assembleGrievance(db: Database, row: GrievanceRow, viewer?: SessionUser): PublicGrievance {
+	const isAnon = Boolean(row.is_anonymous);
+	const isViewerAuthor = viewer ? viewer.id === row.student_id : false;
+
 	const studentRow = findUserById(db, row.student_id);
 	if (!studentRow) {
 		throw new HttpError(500, 'internal', 'Internal server error.');
 	}
-	const student = toPublicUser(studentRow);
+
+	// If anonymous and viewer is not the author, pseudonymize the student
+	const student = isAnon && !isViewerAuthor ? toPseudonym(row.student_id) : toPublicUser(studentRow);
 	const attachments = listAttachmentRows(db, row.id).map(toPublicAttachment);
 	const comments = listCommentRows(db, row.id).map((comment) => {
+		if (isAnon && comment.author_id === row.student_id && !isViewerAuthor) {
+			return toPublicComment(comment, toPseudonym(row.student_id));
+		}
 		const authorRow = findUserById(db, comment.author_id);
 		if (!authorRow) {
 			throw new HttpError(500, 'internal', 'Internal server error.');
 		}
 		return toPublicComment(comment, toPublicUser(authorRow));
 	});
+
 	return toPublicGrievance(row, student, attachments, comments);
 }
 
@@ -268,6 +283,23 @@ export function updateUserPassword(
 	})();
 }
 
+const GENESIS_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
+
+function computeAuditHash(
+	prevHash: string,
+	id: string,
+	userId: string | null,
+	action: string,
+	targetType: string,
+	targetId: string | null,
+	details: string | null,
+	ipAddress: string | null,
+	createdAt: string
+): string {
+	const payload = `${prevHash}|${id}|${userId ?? ''}|${action}|${targetType}|${targetId ?? ''}|${details ?? ''}|${ipAddress ?? ''}|${createdAt}`;
+	return createHash('sha256').update(payload).digest('hex');
+}
+
 export function recordAuditLog(
 	db: Database,
 	params: {
@@ -289,9 +321,26 @@ export function recordAuditLog(
 				? params.details
 				: JSON.stringify(params.details);
 
+	// Get latest entry_hash for hash-chaining
+	const lastRow = db
+		.prepare('SELECT entry_hash FROM audit_logs ORDER BY rowid DESC LIMIT 1')
+		.get() as { entry_hash?: string } | undefined;
+	const prevHash = lastRow?.entry_hash ?? GENESIS_HASH;
+	const entryHash = computeAuditHash(
+		prevHash,
+		id,
+		params.userId ?? null,
+		params.action,
+		params.targetType,
+		params.targetId ?? null,
+		detailsJson,
+		params.ipAddress ?? null,
+		ts
+	);
+
 	db.prepare(
-		`INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip_address, user_agent, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		`INSERT INTO audit_logs (id, user_id, action, target_type, target_id, details, ip_address, user_agent, prev_hash, entry_hash, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	).run(
 		id,
 		params.userId ?? null,
@@ -301,8 +350,65 @@ export function recordAuditLog(
 		detailsJson,
 		params.ipAddress ?? null,
 		params.userAgent ?? null,
+		prevHash,
+		entryHash,
 		ts
 	);
+}
+
+export function verifyAuditLogIntegrity(db: Database): {
+	verified: boolean;
+	totalRecords: number;
+	latestHash: string | null;
+	brokenAtId?: string;
+} {
+	const rows = db
+		.prepare('SELECT * FROM audit_logs ORDER BY rowid ASC')
+		.all() as AuditLogRow[];
+
+	if (rows.length === 0) {
+		return { verified: true, totalRecords: 0, latestHash: null };
+	}
+
+	let expectedPrevHash = GENESIS_HASH;
+	for (const row of rows) {
+		if (row.prev_hash && row.prev_hash !== expectedPrevHash) {
+			return {
+				verified: false,
+				totalRecords: rows.length,
+				latestHash: row.entry_hash ?? null,
+				brokenAtId: row.id
+			};
+		}
+		if (row.entry_hash) {
+			const computed = computeAuditHash(
+				row.prev_hash ?? expectedPrevHash,
+				row.id,
+				row.user_id,
+				row.action,
+				row.target_type,
+				row.target_id,
+				row.details,
+				row.ip_address,
+				row.created_at
+			);
+			if (computed !== row.entry_hash) {
+				return {
+					verified: false,
+					totalRecords: rows.length,
+					latestHash: row.entry_hash,
+					brokenAtId: row.id
+				};
+			}
+			expectedPrevHash = row.entry_hash;
+		}
+	}
+
+	return {
+		verified: true,
+		totalRecords: rows.length,
+		latestHash: rows[rows.length - 1]?.entry_hash ?? null
+	};
 }
 
 export function listAuditLogs(

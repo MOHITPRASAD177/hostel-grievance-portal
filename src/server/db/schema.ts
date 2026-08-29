@@ -28,7 +28,9 @@ CREATE TABLE IF NOT EXISTS grievances (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   deleted_at TEXT,
-  archived_at TEXT
+  archived_at TEXT,
+  is_anonymous INTEGER NOT NULL DEFAULT 0,
+  is_canary INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS comments (
@@ -67,6 +69,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   details TEXT,
   ip_address TEXT,
   user_agent TEXT,
+  prev_hash TEXT,
+  entry_hash TEXT,
   created_at TEXT NOT NULL
 );
 
@@ -86,17 +90,33 @@ export function applySchema(db: Database): void {
 	db.exec(SCHEMA_SQL);
 
 	// Ensure columns exist on existing databases
-	const columns = db.prepare(`PRAGMA table_info(grievances)`).all() as { name: string }[];
-	const columnNames = new Set(columns.map((c) => c.name));
-	if (!columnNames.has('deleted_at')) {
+	const grievanceCols = db.prepare('PRAGMA table_info(grievances)').all() as { name: string }[];
+	const grievanceColNames = new Set(grievanceCols.map((c) => c.name));
+	if (!grievanceColNames.has('deleted_at')) {
 		db.exec('ALTER TABLE grievances ADD COLUMN deleted_at TEXT;');
 	}
-	if (!columnNames.has('archived_at')) {
+	if (!grievanceColNames.has('archived_at')) {
 		db.exec('ALTER TABLE grievances ADD COLUMN archived_at TEXT;');
+	}
+	if (!grievanceColNames.has('is_anonymous')) {
+		db.exec('ALTER TABLE grievances ADD COLUMN is_anonymous INTEGER NOT NULL DEFAULT 0;');
+	}
+	if (!grievanceColNames.has('is_canary')) {
+		db.exec('ALTER TABLE grievances ADD COLUMN is_canary INTEGER NOT NULL DEFAULT 0;');
+	}
+
+	const auditCols = db.prepare('PRAGMA table_info(audit_logs)').all() as { name: string }[];
+	const auditColNames = new Set(auditCols.map((c) => c.name));
+	if (!auditColNames.has('prev_hash')) {
+		db.exec('ALTER TABLE audit_logs ADD COLUMN prev_hash TEXT;');
+	}
+	if (!auditColNames.has('entry_hash')) {
+		db.exec('ALTER TABLE audit_logs ADD COLUMN entry_hash TEXT;');
 	}
 
 	db.exec('CREATE INDEX IF NOT EXISTS idx_grievances_student ON grievances(student_id);');
 	db.exec('CREATE INDEX IF NOT EXISTS idx_grievances_deleted ON grievances(deleted_at);');
+	db.exec('CREATE INDEX IF NOT EXISTS idx_grievances_canary ON grievances(is_canary);');
 	db.exec('CREATE INDEX IF NOT EXISTS idx_comments_grievance ON comments(grievance_id);');
 	db.exec('CREATE INDEX IF NOT EXISTS idx_attachments_grievance ON attachments(grievance_id);');
 	db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);');
@@ -107,4 +127,3 @@ export function applySchema(db: Database): void {
 	db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);');
 	db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, is_read);');
 }
-

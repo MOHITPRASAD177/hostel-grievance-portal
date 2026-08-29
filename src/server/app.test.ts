@@ -578,6 +578,84 @@ describe('HostelGrievance API baseline', () => {
 		});
 		expect((await archivedList.json()).data.some((g: { id: string }) => g.id === archId)).toBe(true);
 	});
+
+	it('triggers Honeytoken Canary Trap upon accessing deceptive GRV-0000', async () => {
+		const student = await login(app, 'student@example.test', 'student123');
+
+		// Attacker attempts to access Canary grievance GRV-0000
+		const res = await app.request('/api/grievances/GRV-0000', {
+			headers: { Cookie: student.cookie, 'x-forwarded-for': '198.51.100.42' }
+		});
+		expect(res.status).toBe(403);
+
+		// Subsequent requests from this IP should be automatically quarantined
+		const blockedRes = await app.request('/api/grievances/GRV-0001', {
+			headers: { Cookie: student.cookie, 'x-forwarded-for': '198.51.100.42' }
+		});
+		expect(blockedRes.status).toBe(429);
+		const json = await blockedRes.json();
+		expect(json.error).toContain('temporarily blocked');
+	});
+
+	it('supports Anonymous Whistleblower mode with zero-knowledge author masking for wardens', async () => {
+		const student = await login(app, 'student@example.test', 'student123');
+		const warden = await login(app, 'warden@example.test', 'warden123');
+
+		// Student files anonymous grievance
+		const createRes = await app.request('/api/grievances', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Cookie: student.cookie },
+			body: JSON.stringify({
+				title: 'Severe Ragging in Block D Room 102',
+				category: 'Other',
+				description: 'Witnessed senior students harassing juniors at midnight.',
+				isAnonymous: true
+			})
+		});
+		expect(createRes.status).toBe(201);
+		const created = (await createRes.json()).data;
+		expect(created.isAnonymous).toBe(true);
+		// For author, own name is visible
+		expect(created.student.name).toBe('Aarav Mehta');
+
+		// For warden, student identity is pseudonymized
+		const wardenGet = await app.request(`/api/grievances/${created.id}`, {
+			headers: { Cookie: warden.cookie }
+		});
+		expect(wardenGet.status).toBe(200);
+		const wardenData = (await wardenGet.json()).data;
+		expect(wardenData.isAnonymous).toBe(true);
+		expect(wardenData.student.name).toContain('Anonymous Student');
+		expect(wardenData.student.email).toContain('@hostel.internal');
+		expect(wardenData.student.room).toContain('Redacted');
+		expect(wardenData.studentId).toContain('ANON-');
+	});
+
+	it('verifies cryptographic hash-chain integrity for audit logs and provides SecOps telemetry', async () => {
+		const warden = await login(app, 'warden@example.test', 'warden123');
+
+		// Verify audit log cryptographic hash-chain
+		const verifyRes = await app.request('/api/admin/audit-logs/verify', {
+			headers: { Cookie: warden.cookie }
+		});
+		expect(verifyRes.status).toBe(200);
+		const verifyJson = await verifyRes.json();
+		expect(verifyJson.data.verified).toBe(true);
+		expect(verifyJson.data.status).toBe('VALID_AND_UNTOUCHED');
+		expect(verifyJson.data.totalRecords).toBeGreaterThan(0);
+		expect(verifyJson.data.latestHash).toBeTruthy();
+
+		// Fetch SecOps Telemetry
+		const telemetryRes = await app.request('/api/admin/security/telemetry', {
+			headers: { Cookie: warden.cookie }
+		});
+		expect(telemetryRes.status).toBe(200);
+		const telemetry = (await telemetryRes.json()).data;
+		expect(telemetry.threatLevel).toBeDefined();
+		expect(telemetry.auditChainIntegrity.verified).toBe(true);
+		expect(telemetry.totalSecurityEventsToday).toBeGreaterThanOrEqual(0);
+	});
 });
+
 
 

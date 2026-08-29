@@ -28,7 +28,7 @@ import {
 	writeStoredFile
 } from '../storage/attachments.ts';
 import { GrievanceGuard, enforce } from '../security/policy.ts';
-import { trackAuthzFailure, trackResourceAccess } from '../security/monitor.ts';
+import { trackAuthzFailure, trackResourceAccess, triggerCanaryTrap } from '../security/monitor.ts';
 import { extractIp } from '../security/gateway.ts';
 
 function nowIso(): string {
@@ -60,7 +60,7 @@ grievanceRoutes.get('/', (c) => {
 			? listAllGrievanceRows(db, { includeArchived, includeDeleted })
 			: listGrievanceRowsForStudent(db, user.id, { includeArchived, includeDeleted });
 	return c.json({
-		data: rows.map((row) => assembleGrievance(db, row))
+		data: rows.map((row) => assembleGrievance(db, row, user))
 	});
 });
 
@@ -75,6 +75,7 @@ grievanceRoutes.post('/', async (c) => {
 	let title = '';
 	let category = '';
 	let description = '';
+	let isAnonymous = false;
 	let upload: File | undefined;
 
 	if (contentType.includes('multipart/form-data')) {
@@ -82,6 +83,7 @@ grievanceRoutes.post('/', async (c) => {
 		title = readString(body.title) ?? '';
 		category = readString(body.category) ?? '';
 		description = readString(body.description) ?? '';
+		isAnonymous = body.is_anonymous === 'true' || body.isAnonymous === 'true' || body.is_anonymous === '1';
 		if (body.file instanceof File) upload = body.file;
 		else if (body.attachment instanceof File) upload = body.attachment;
 	} else {
@@ -97,6 +99,8 @@ grievanceRoutes.post('/', async (c) => {
 		title = readString('title' in json ? json.title : undefined) ?? '';
 		category = readString('category' in json ? json.category : undefined) ?? '';
 		description = readString('description' in json ? json.description : undefined) ?? '';
+		if ('isAnonymous' in json) isAnonymous = Boolean(json.isAnonymous);
+		if ('is_anonymous' in json) isAnonymous = Boolean(json.is_anonymous);
 	}
 
 	title = title.trim();
@@ -118,16 +122,16 @@ grievanceRoutes.post('/', async (c) => {
 	const id = nextGrievanceId(db);
 	const ts = nowIso();
 	db.prepare(
-		`INSERT INTO grievances (id, student_id, title, category, description, status, created_at, updated_at, deleted_at, archived_at)
-     VALUES (?, ?, ?, ?, ?, 'open', ?, ?, NULL, NULL)`
-	).run(id, user.id, title, parsedCategory, description, ts, ts);
+		`INSERT INTO grievances (id, student_id, title, category, description, status, is_anonymous, is_canary, created_at, updated_at, deleted_at, archived_at)
+     VALUES (?, ?, ?, ?, ?, 'open', ?, 0, ?, ?, NULL, NULL)`
+	).run(id, user.id, title, parsedCategory, description, isAnonymous ? 1 : 0, ts, ts);
 
 	recordAuditLog(db, {
 		userId: user.id,
 		action: 'grievance.create',
 		targetType: 'grievance',
 		targetId: id,
-		details: { title, category: parsedCategory },
+		details: { title, category: parsedCategory, isAnonymous },
 		ipAddress: meta.ipAddress,
 		userAgent: meta.userAgent
 	});
@@ -161,7 +165,7 @@ grievanceRoutes.post('/', async (c) => {
 		});
 	}
 
-	return c.json({ data: assembleGrievance(db, requireGrievance(db, id)) }, 201);
+	return c.json({ data: assembleGrievance(db, requireGrievance(db, id), user) }, 201);
 });
 
 grievanceRoutes.get('/:id/comments', (c) => {
@@ -293,6 +297,12 @@ grievanceRoutes.get('/:id', (c) => {
 	const db = c.get('db');
 	const user = requireUser(c, db);
 	const row = requireGrievance(db, c.req.param('id'));
+
+	if (row.is_canary === 1) {
+		triggerCanaryTrap(extractIp(c), user.id, row.id, db);
+		throw new HttpError(403, 'unauthorized', 'You are not authorized to view this grievance.');
+	}
+
 	const viewPolicy = GrievanceGuard.canView(user, row);
 	if (!viewPolicy.allowed) {
 		// Track IDOR probe — student scanning another student's grievance ID
@@ -300,7 +310,7 @@ grievanceRoutes.get('/:id', (c) => {
 		enforce(viewPolicy);
 	}
 	trackResourceAccess(extractIp(c), row.id);
-	return c.json({ data: assembleGrievance(db, row) });
+	return c.json({ data: assembleGrievance(db, row, user) });
 });
 
 grievanceRoutes.patch('/:id', async (c) => {

@@ -66,11 +66,24 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 	];
 
 	const insertGrievance = db.prepare(
-		`INSERT INTO grievances (id, student_id, title, category, description, status, created_at, updated_at)
-     VALUES (@id, @student_id, @title, @category, @description, @status, @created_at, @updated_at)`
+		`INSERT INTO grievances (id, student_id, title, category, description, status, is_anonymous, is_canary, created_at, updated_at)
+     VALUES (@id, @student_id, @title, @category, @description, @status, @is_anonymous, @is_canary, @created_at, @updated_at)`
 	);
 
 	const grievances = [
+		{
+			id: 'GRV-0000',
+			student_id: 'stu-1',
+			title: '[CONFIDENTIAL] Disciplinary Committee Sealed Record & Room Inspection Report',
+			category: 'Other',
+			description:
+				'CANARY HONEYTOKEN: This is a synthetic deceptive grievance used for automated breach and IDOR scraper detection. Unauthorized access triggers immediate IP quarantine and critical audit alert.',
+			status: 'resolved',
+			is_anonymous: 0,
+			is_canary: 1,
+			created_at: '2026-08-01T00:00:00.000Z',
+			updated_at: '2026-08-01T00:00:00.000Z'
+		},
 		{
 			id: 'GRV-0001',
 			student_id: 'stu-1',
@@ -79,6 +92,8 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 			description:
 				'Since Monday there has been a steady leak from the ceiling of the attached bathroom in B-204. Water pools on the floor and has started dripping near the electrical switch board, which feels unsafe.',
 			status: 'in_progress',
+			is_anonymous: 0,
+			is_canary: 0,
 			created_at: '2026-08-13T09:15:00.000Z',
 			updated_at: '2026-08-14T10:12:00.000Z'
 		},
@@ -90,6 +105,8 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 			description:
 				'Both tube lights in the second floor corridor of Block B have been non-functional for four days. The corridor is completely dark after 7pm.',
 			status: 'in_progress',
+			is_anonymous: 0,
+			is_canary: 0,
 			created_at: '2026-08-14T18:30:00.000Z',
 			updated_at: '2026-08-15T07:45:00.000Z'
 		},
@@ -101,6 +118,8 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 			description:
 				'The Wi-Fi in Block A disconnects repeatedly, especially between 8pm and midnight. Speed tests show under 1 Mbps when connected. Attached a screenshot from yesterday.',
 			status: 'open',
+			is_anonymous: 0,
+			is_canary: 0,
 			created_at: '2026-08-15T20:10:00.000Z',
 			updated_at: '2026-08-16T08:40:00.000Z'
 		},
@@ -112,6 +131,8 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 			description:
 				'The common room and corridor on the third floor of Block C have not been swept for over a week. Dust bins are overflowing in the morning.',
 			status: 'resolved',
+			is_anonymous: 0,
+			is_canary: 0,
 			created_at: '2026-08-12T07:00:00.000Z',
 			updated_at: '2026-08-17T06:00:00.000Z'
 		},
@@ -123,6 +144,8 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 			description:
 				'The window latch in room A-112 is broken and the window cannot be secured. Rain water entered during last week’s storm and damaged books kept near the sill.',
 			status: 'open',
+			is_anonymous: 0,
+			is_canary: 0,
 			created_at: '2026-08-18T11:25:00.000Z',
 			updated_at: '2026-08-18T11:25:00.000Z'
 		},
@@ -134,6 +157,8 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 			description:
 				'The backup generator behind C block runs for long stretches at night and the noise makes it difficult to sleep in the rooms facing the rear. Requesting it be serviced or sound-proofed.',
 			status: 'in_progress',
+			is_anonymous: 0,
+			is_canary: 0,
 			created_at: '2026-08-17T21:45:00.000Z',
 			updated_at: '2026-08-18T16:02:00.000Z'
 		},
@@ -145,6 +170,8 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 			description:
 				'Water pressure on taps in C block drops sharply between 6am and 8am. Buckets take very long to fill. It normalises after 9am.',
 			status: 'resolved',
+			is_anonymous: 0,
+			is_canary: 0,
 			created_at: '2026-08-11T06:50:00.000Z',
 			updated_at: '2026-08-16T03:30:00.000Z'
 		},
@@ -156,6 +183,8 @@ export function seedDatabase(db: Database, uploadsDir: string): void {
 			description:
 				'For the past few days the dining tables in the mess are not wiped before dinner service. Requesting the housekeeping staff to follow the standard routine.',
 			status: 'open',
+			is_anonymous: 0,
+			is_canary: 0,
 			created_at: '2026-08-19T13:05:00.000Z',
 			updated_at: '2026-08-19T13:05:00.000Z'
 		}

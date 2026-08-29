@@ -1,16 +1,18 @@
 /**
- * GrievanceGuard — Threat Monitor
+ * GrievanceGuard — Threat Monitor & SecOps Telemetry Engine
  *
- * Detects and responds to suspicious access patterns in real-time:
- *  - IDOR probing (rapid sequential grievance ID scanning)
- *  - Authorization failure storms (repeated 403/401 from same IP)
- *  - Automated scraping / flood attacks
- *
- * All security events are stored in-memory and written to the audit log.
+ * Real-time active defense:
+ *  - Canary / Honeytoken Trap trigger & instant IP isolation
+ *  - IDOR probing detection & mitigation
+ *  - Authorization failure storm tracking
+ *  - Automated flood throttling
+ *  - Telemetry aggregator for SecOps dashboard
  */
 
 import type { Database } from 'better-sqlite3';
-import { recordAuditLog } from '../db/queries.ts';
+import { recordAuditLog, verifyAuditLogIntegrity } from '../db/queries.ts';
+import { toPublicAuditLog } from '../db/map.ts';
+import type { AuditLogRow, SecOpsTelemetry } from '../types/index.ts';
 
 export type ThreatLevel = 'low' | 'medium' | 'high' | 'critical';
 
@@ -24,13 +26,9 @@ export interface SecurityEvent {
 }
 
 interface IpState {
-	// Authorization failures (403 / 401)
 	authzFailures: number[];
-	// Distinct resource IDs accessed (IDOR probe detection)
 	resourcesAccessed: Set<string>;
-	// Total requests
 	requestTimestamps: number[];
-	// Whether this IP is currently blocked
 	blockedUntil: number;
 }
 
@@ -43,6 +41,7 @@ const AUTHZ_FAILURE_THRESHOLD = 8; // Block after 8 forbidden errors / minute
 const IDOR_PROBE_THRESHOLD = 15; // Block after accessing 15 distinct resource IDs / minute
 const FLOOD_THRESHOLD = 200; // Block after 200 requests / minute
 const BLOCK_DURATION_MS = 15 * 60_000; // Block for 15 minutes
+const CANARY_BLOCK_DURATION_MS = 60 * 60_000; // Canary trap triggers 60-minute isolation
 
 function getOrCreateState(ip: string): IpState {
 	let state = ipStates.get(ip);
@@ -92,6 +91,30 @@ export function trackRequest(ip: string): void {
 }
 
 /**
+ * Trigger Canary / Honeytoken Trap when a forbidden fake resource is requested.
+ * Automatically initiates immediate 60-minute IP ban and logs critical security alert.
+ */
+export function triggerCanaryTrap(
+	ip: string,
+	userId: string | null,
+	canaryId: string,
+	db: Database
+): void {
+	const now = Date.now();
+	const state = getOrCreateState(ip);
+	state.blockedUntil = now + CANARY_BLOCK_DURATION_MS;
+
+	logSecurityEvent(db, {
+		type: 'honeytoken_trap_triggered',
+		ipAddress: ip,
+		userId,
+		detail: `Adversary accessed deceptive canary resource ${canaryId}. Instant 60-minute IP isolation activated.`,
+		timestamp: now,
+		level: 'critical'
+	});
+}
+
+/**
  * Record an authorization failure (403 / 401) from an IP.
  * Triggers a block after threshold is exceeded.
  */
@@ -109,7 +132,6 @@ export function trackAuthzFailure(
 	// IDOR probe: track distinct resource IDs accessed
 	if (resourceId) {
 		state.resourcesAccessed.add(resourceId);
-		// Prune old resource entries every 1 minute
 		if (state.resourcesAccessed.size > IDOR_PROBE_THRESHOLD) {
 			const wasBlocked = state.blockedUntil > now;
 			state.blockedUntil = now + BLOCK_DURATION_MS;
@@ -145,21 +167,17 @@ export function trackAuthzFailure(
 }
 
 /**
- * Track a successful resource access (for IDOR pattern analysis).
- * Wardens accessing their own resources are excluded from IDOR tracking.
+ * Track a successful resource access.
  */
 export function trackResourceAccess(ip: string, resourceId: string): void {
 	const now = Date.now();
 	const state = getOrCreateState(ip);
-
-	// Reset resource set if the window has passed
 	if (state.requestTimestamps.length > 0) {
 		const oldest = Math.min(...state.requestTimestamps);
 		if (now - oldest > WINDOW_MS) {
 			state.resourcesAccessed.clear();
 		}
 	}
-
 	state.resourcesAccessed.add(resourceId);
 }
 
@@ -187,18 +205,58 @@ function logSecurityEvent(db: Database, event: SecurityEvent): void {
 }
 
 /**
- * Get current threat stats for an IP (for admin inspection).
+ * Get comprehensive SecOps telemetry for warden dashboard.
  */
-export function getIpStats(ip: string) {
-	const state = ipStates.get(ip);
-	if (!state) return null;
+export function getSecOpsTelemetry(db: Database): SecOpsTelemetry {
 	const now = Date.now();
+	const bannedIpsList: Array<{ ip: string; blockedUntil: string | null; recentFailures: number }> = [];
+
+	for (const [ip, state] of ipStates.entries()) {
+		if (state.blockedUntil > now) {
+			bannedIpsList.push({
+				ip,
+				blockedUntil: new Date(state.blockedUntil).toISOString(),
+				recentFailures: state.authzFailures.length
+			});
+		}
+	}
+
+	const todayStart = new Date();
+	todayStart.setHours(0, 0, 0, 0);
+	const todayIso = todayStart.toISOString();
+
+	const secEventsCountRow = db
+		.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE action LIKE 'security.%' AND created_at >= ?`)
+		.get(todayIso) as { count: number };
+
+	const canaryCountRow = db
+		.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE action = 'security.honeytoken_trap_triggered'`)
+		.get() as { count: number };
+
+	const recentAlertRows = db
+		.prepare(`SELECT * FROM audit_logs WHERE action LIKE 'security.%' ORDER BY created_at DESC LIMIT 10`)
+		.all() as AuditLogRow[];
+
+	const integrity = verifyAuditLogIntegrity(db);
+
+	let threatLevel: 'DEFCON_5_NORMAL' | 'DEFCON_3_ELEVATED' | 'DEFCON_1_CRITICAL' = 'DEFCON_5_NORMAL';
+	if (canaryCountRow.count > 0 || bannedIpsList.length > 3) {
+		threatLevel = 'DEFCON_1_CRITICAL';
+	} else if (bannedIpsList.length > 0 || secEventsCountRow.count > 5) {
+		threatLevel = 'DEFCON_3_ELEVATED';
+	}
+
 	return {
-		ip,
-		isBlocked: state.blockedUntil > now,
-		blockedUntil: state.blockedUntil > now ? new Date(state.blockedUntil).toISOString() : null,
-		recentRequests: pruneOldEntries(state.requestTimestamps, now).length,
-		recentAuthzFailures: pruneOldEntries(state.authzFailures, now).length,
-		distinctResourcesAccessed: state.resourcesAccessed.size
+		threatLevel,
+		activeBannedIpsCount: bannedIpsList.length,
+		bannedIps: bannedIpsList,
+		totalSecurityEventsToday: secEventsCountRow.count,
+		canaryTrapHits: canaryCountRow.count,
+		auditChainIntegrity: {
+			verified: integrity.verified,
+			totalRecords: integrity.totalRecords,
+			latestHash: integrity.latestHash
+		},
+		recentSecurityAlerts: recentAlertRows.map(toPublicAuditLog)
 	};
 }

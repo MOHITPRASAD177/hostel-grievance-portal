@@ -9,6 +9,8 @@ import { notificationRoutes } from './routes/notifications.ts';
 import { auditRoutes } from './routes/audit.ts';
 import { cors } from 'hono/cors';
 import { gatewayMiddleware, securityHeadersMiddleware } from './security/gateway.ts';
+import { requireUser } from './auth/session.ts';
+import { getSecOpsTelemetry } from './security/monitor.ts';
 
 export type CreateAppOptions = {
 	db: Database;
@@ -81,6 +83,15 @@ export function createApp(options: CreateAppOptions) {
 	app.route('/api/attachments', attachmentRoutes);
 	app.route('/api/notifications', notificationRoutes);
 	app.route('/api/admin/audit-logs', auditRoutes);
+
+	app.get('/api/admin/security/telemetry', (c) => {
+		const db = c.get('db');
+		const user = requireUser(c, db);
+		if (user.role !== 'warden') {
+			throw new HttpError(403, 'unauthorized', 'Only wardens can access SecOps telemetry.');
+		}
+		return c.json({ data: getSecOpsTelemetry(db) });
+	});
 
 	app.all('/api/*', () => {
 		throw new HttpError(404, 'not_found', 'Not found.');

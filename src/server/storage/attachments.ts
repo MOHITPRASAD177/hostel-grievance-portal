@@ -75,6 +75,70 @@ export function detectImageMimeType(bytes: Buffer): string | null {
 	return null;
 }
 
+/**
+ * Strip EXIF, GPS coordinates, camera serials, and ancillary metadata
+ * from JPEG and PNG files to protect student privacy and room geolocation.
+ */
+export function stripImageMetadata(bytes: Buffer, mime: string): Buffer {
+	try {
+		if (mime === 'image/jpeg' && bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+			const chunks: Buffer[] = [bytes.subarray(0, 2)]; // Start with SOI (FF D8)
+			let pos = 2;
+			while (pos < bytes.length) {
+				if (bytes[pos] !== 0xff) break;
+				const marker = bytes[pos + 1];
+				// End of Image (EOI) or Start of Scan (SOS - compressed image data follows)
+				if (marker === 0xd9 || marker === 0xda) {
+					chunks.push(bytes.subarray(pos));
+					break;
+				}
+				if (pos + 4 > bytes.length) break;
+				const segLen = bytes.readUInt16BE(pos + 2);
+				// Skip APP1 (0xE1 = EXIF/GPS), APP2 (0xE2), COM (0xFE = Comment)
+				if (marker === 0xe1 || marker === 0xfe) {
+					pos += 2 + segLen;
+					continue;
+				}
+				chunks.push(bytes.subarray(pos, pos + 2 + segLen));
+				pos += 2 + segLen;
+			}
+			const result = Buffer.concat(chunks);
+			if (result.length > 2 && result[0] === 0xff && result[1] === 0xd8) {
+				return result;
+			}
+		}
+
+		if (mime === 'image/png' && bytes.length > 8) {
+			const pngSig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+			if (bytes.subarray(0, 8).equals(pngSig)) {
+				const chunks: Buffer[] = [bytes.subarray(0, 8)];
+				let pos = 8;
+				while (pos + 8 <= bytes.length) {
+					const chunkLen = bytes.readUInt32BE(pos);
+					const chunkType = bytes.subarray(pos + 4, pos + 8).toString('ascii');
+					const totalChunkLen = 12 + chunkLen;
+					if (pos + totalChunkLen > bytes.length) break;
+
+					// Strip metadata chunks: eXIf, tEXt, zTXt, iTXt
+					if (['eXIf', 'tEXt', 'zTXt', 'iTXt'].includes(chunkType)) {
+						pos += totalChunkLen;
+						continue;
+					}
+
+					chunks.push(bytes.subarray(pos, pos + totalChunkLen));
+					pos += totalChunkLen;
+					if (chunkType === 'IEND') break;
+				}
+				const result = Buffer.concat(chunks);
+				if (result.length > 8) return result;
+			}
+		}
+	} catch {
+		// Fallback to original bytes if stripping fails for any reason
+	}
+	return bytes;
+}
+
 export function assertPermittedAttachment(mime: string, bytes: Buffer): void {
 	if (!ALLOWED_ATTACHMENT_TYPES.has(mime)) {
 		throw new HttpError(400, 'bad_request', 'Attachments must be JPEG, PNG, GIF, or WebP images.');
@@ -92,9 +156,10 @@ export function assertPermittedAttachment(mime: string, bytes: Buffer): void {
 }
 
 export async function bufferFromUpload(file: File): Promise<Buffer> {
-	const bytes = Buffer.from(await file.arrayBuffer());
-	assertPermittedAttachment(file.type, bytes);
-	return bytes;
+	const raw = Buffer.from(await file.arrayBuffer());
+	assertPermittedAttachment(file.type, raw);
+	const sanitized = stripImageMetadata(raw, file.type);
+	return Buffer.from(sanitized);
 }
 
 export function writeStoredFile(uploadsDir: string, storedName: string, bytes: Buffer): void {

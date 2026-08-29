@@ -23,6 +23,8 @@ uploads/
 
 # NOTE: data/ (the SQLite database) IS committed intentionally
 # so reviewers can run the project without running db:init
+data/*.db-shm
+data/*.db-wal
 
 # ========================
 # Environment & secrets

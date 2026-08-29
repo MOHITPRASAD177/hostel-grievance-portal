@@ -74,9 +74,13 @@ function isResolved(grievance: GrievanceRow): boolean {
 export const GrievanceGuard = {
 	/**
 	 * VIEW a grievance detail page.
-	 * Students may only view their own; wardens may view any.
+	 * Students may only view their own; wardens may view any non-canary.
+	 * Canary records are Honeytoken traps — access triggers instant security isolation.
 	 */
 	canView(user: SessionUser, grievance: GrievanceRow): PolicyResult {
+		if (grievance.is_canary === 1) {
+			return deny('Honeytoken trap triggered.', 403);
+		}
 		if (isWarden(user)) return ALLOWED;
 		if (isStudent(user) && isOwner(user, grievance)) return ALLOWED;
 		return deny('You are not authorized to view this grievance.');

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { statusToUi } from '../http/status.ts';
 import type {
 	AttachmentRow,
@@ -14,6 +15,17 @@ import type {
 	GrievanceRow,
 	UserRow
 } from '../types/index.ts';
+
+export function toPseudonym(userId: string): PublicUser {
+	const hash = createHash('sha256').update(userId).digest('hex').slice(0, 6).toUpperCase();
+	return {
+		id: `ANON-${hash}`,
+		name: `Anonymous Student #${hash}`,
+		email: `anonymous-${hash.toLowerCase()}@hostel.internal`,
+		role: 'student',
+		room: 'Redacted (Whistleblower Mode)'
+	};
+}
 
 export function toPublicUser(row: Pick<UserRow, 'id' | 'name' | 'email' | 'role' | 'room'>): PublicUser {
 	const user: PublicUser = {
@@ -60,12 +72,14 @@ export function toPublicGrievance(
 		description: row.description,
 		category: row.category as GrievanceCategory,
 		status: statusToUi(row.status),
-		studentId: row.student_id,
+		studentId: student.id,
 		student,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 		deletedAt: row.deleted_at ?? undefined,
 		archivedAt: row.archived_at ?? undefined,
+		isAnonymous: Boolean(row.is_anonymous),
+		isCanary: Boolean(row.is_canary),
 		attachments,
 		comments
 	};
@@ -100,7 +114,8 @@ export function toPublicAuditLog(row: AuditLogRow): PublicAuditLog {
 		targetId: row.target_id,
 		details: parsedDetails,
 		ipAddress: row.ip_address,
+		prevHash: row.prev_hash,
+		entryHash: row.entry_hash,
 		createdAt: row.created_at
 	};
 }
-
