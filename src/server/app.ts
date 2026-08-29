@@ -8,6 +8,7 @@ import { attachmentRoutes } from './routes/attachments.ts';
 import { notificationRoutes } from './routes/notifications.ts';
 import { auditRoutes } from './routes/audit.ts';
 import { cors } from 'hono/cors';
+import { gatewayMiddleware, securityHeadersMiddleware } from './security/gateway.ts';
 
 export type CreateAppOptions = {
 	db: Database;
@@ -38,18 +39,19 @@ function getCorsOrigin(origin: string | undefined): string {
 export function createApp(options: CreateAppOptions) {
 	const app = new Hono<AppEnv>();
 
+	// ── Layer 0: Inject context dependencies ────────────────────────────────
 	app.use('*', async (c, next) => {
 		c.set('db', options.db);
 		c.set('uploadsDir', options.uploadsDir);
-		// SEC-04 / SEC-11: Security headers
-		c.header('X-Content-Type-Options', 'nosniff');
-		c.header('X-Frame-Options', 'DENY');
-		c.header('X-XSS-Protection', '0'); // Disable legacy XSS auditor (can cause issues); CSP is the modern approach
-		c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-		c.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
 		await next();
 	});
 
+	// ── Layer 1: Security Headers ────────────────────────────────────────────
+	// Applied to every response, including errors.
+	app.use('*', securityHeadersMiddleware);
+
+	// ── Layer 2: CORS ────────────────────────────────────────────────────────
+	// Whitelist-only origin policy with credentials support.
 	app.use(
 		'/api/*',
 		cors({
@@ -60,11 +62,20 @@ export function createApp(options: CreateAppOptions) {
 		})
 	);
 
+	// ── Layer 3: Security Gateway ─────────────────────────────────────────────
+	// IP blocklist, flood detection, body size limit, suspicious pattern scan.
+	app.use('/api/*', gatewayMiddleware);
+
+	// ── Error handler ─────────────────────────────────────────────────────────
 	app.onError((err, c) => handleError(err, c));
 
+	// ── 404 catch-all ────────────────────────────────────────────────────────
 	app.notFound((c) => c.json({ error: 'Not found.', code: 'not_found' }, 404));
 
-	app.get('/api/health', (c) => c.json({ ok: true }));
+	// ── Routes ────────────────────────────────────────────────────────────────
+	app.get('/api/health', (c) =>
+		c.json({ ok: true, guard: 'GrievanceGuard v1.0 — Layered Authorization & Threat Monitoring' })
+	);
 	app.route('/api', authRoutes);
 	app.route('/api/grievances', grievanceRoutes);
 	app.route('/api/attachments', attachmentRoutes);
@@ -77,4 +88,3 @@ export function createApp(options: CreateAppOptions) {
 
 	return app;
 }
-

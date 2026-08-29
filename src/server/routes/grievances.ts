@@ -4,7 +4,6 @@ import { requireUser } from '../auth/session.ts';
 import {
 	archiveGrievance,
 	assembleGrievance,
-	assertCanViewGrievance,
 	createNotification,
 	findUserById,
 	listAllGrievanceRows,
@@ -28,6 +27,9 @@ import {
 	originalBasename,
 	writeStoredFile
 } from '../storage/attachments.ts';
+import { GrievanceGuard, enforce } from '../security/policy.ts';
+import { trackAuthzFailure, trackResourceAccess } from '../security/monitor.ts';
+import { extractIp } from '../security/gateway.ts';
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -67,9 +69,7 @@ grievanceRoutes.post('/', async (c) => {
 	const uploadsDir = c.get('uploadsDir');
 	const meta = getClientMeta(c);
 	const user = requireUser(c, db);
-	if (user.role !== 'student') {
-		throw new HttpError(403, 'unauthorized', 'Only students can file grievances.');
-	}
+	enforce(GrievanceGuard.canCreate(user));
 
 	const contentType = c.req.header('content-type') ?? '';
 	let title = '';
@@ -168,7 +168,12 @@ grievanceRoutes.get('/:id/comments', (c) => {
 	const db = c.get('db');
 	const user = requireUser(c, db);
 	const row = requireGrievance(db, c.req.param('id'));
-	assertCanViewGrievance(user, row);
+	const viewPolicy = GrievanceGuard.canView(user, row);
+	if (!viewPolicy.allowed) {
+		trackAuthzFailure(extractIp(c), user.id, row.id, db);
+		enforce(viewPolicy);
+	}
+	trackResourceAccess(extractIp(c), row.id);
 	const comments = listCommentRows(db, row.id).map((comment) => {
 		const authorRow = findUserById(db, comment.author_id);
 		if (!authorRow) {
@@ -184,7 +189,11 @@ grievanceRoutes.post('/:id/comments', async (c) => {
 	const meta = getClientMeta(c);
 	const user = requireUser(c, db);
 	const row = requireGrievance(db, c.req.param('id'));
-	assertCanViewGrievance(user, row);
+	const viewPolicy = GrievanceGuard.canView(user, row);
+	if (!viewPolicy.allowed) {
+		trackAuthzFailure(extractIp(c), user.id, row.id, db);
+		enforce(viewPolicy);
+	}
 
 	let body: unknown;
 	try {
@@ -243,14 +252,10 @@ grievanceRoutes.post('/:id/attachments', async (c) => {
 	const meta = getClientMeta(c);
 	const user = requireUser(c, db);
 	const row = requireGrievance(db, c.req.param('id'));
-	if (user.role !== 'student' || row.student_id !== user.id) {
-		throw new HttpError(403, 'unauthorized', 'Only the student owner can add attachments.');
-	}
-	if (row.status === 'resolved') {
-		throw new HttpError(409, 'conflict', 'Resolved grievances cannot be edited.');
-	}
-	if (row.deleted_at) {
-		throw new HttpError(409, 'conflict', 'Withdrawn grievances cannot be edited.');
+	const uploadPolicy = GrievanceGuard.canUploadAttachment(user, row);
+	if (!uploadPolicy.allowed) {
+		trackAuthzFailure(extractIp(c), user.id, row.id, db);
+		enforce(uploadPolicy);
 	}
 
 	const body = await c.req.parseBody();
@@ -288,7 +293,13 @@ grievanceRoutes.get('/:id', (c) => {
 	const db = c.get('db');
 	const user = requireUser(c, db);
 	const row = requireGrievance(db, c.req.param('id'));
-	assertCanViewGrievance(user, row);
+	const viewPolicy = GrievanceGuard.canView(user, row);
+	if (!viewPolicy.allowed) {
+		// Track IDOR probe — student scanning another student's grievance ID
+		trackAuthzFailure(extractIp(c), user.id, row.id, db);
+		enforce(viewPolicy);
+	}
+	trackResourceAccess(extractIp(c), row.id);
 	return c.json({ data: assembleGrievance(db, row) });
 });
 
@@ -297,7 +308,11 @@ grievanceRoutes.patch('/:id', async (c) => {
 	const meta = getClientMeta(c);
 	const user = requireUser(c, db);
 	const row = requireGrievance(db, c.req.param('id'));
-	assertCanViewGrievance(user, row);
+	const viewPolicy = GrievanceGuard.canView(user, row);
+	if (!viewPolicy.allowed) {
+		trackAuthzFailure(extractIp(c), user.id, row.id, db);
+		enforce(viewPolicy);
+	}
 
 	let body: unknown;
 	try {
@@ -322,17 +337,14 @@ grievanceRoutes.patch('/:id', async (c) => {
 
 	switch (user.role) {
 		case 'student': {
-			if (row.student_id !== user.id) {
-				throw new HttpError(403, 'unauthorized', 'Only the student owner can edit this grievance.');
-			}
-			if (row.status === 'resolved') {
-				throw new HttpError(409, 'conflict', 'Resolved grievances cannot be edited.');
-			}
-			if (row.deleted_at) {
-				throw new HttpError(409, 'conflict', 'Withdrawn grievances cannot be edited.');
-			}
 			if (wantsStatus) {
-				throw new HttpError(403, 'unauthorized', 'Students cannot edit grievance status.');
+				trackAuthzFailure(extractIp(c), user.id, row.id, db);
+				enforce(GrievanceGuard.canChangeStatus(user, row));
+			}
+			const editPolicy = GrievanceGuard.canEditContent(user, row);
+			if (!editPolicy.allowed) {
+				trackAuthzFailure(extractIp(c), user.id, row.id, db);
+				enforce(editPolicy);
 			}
 			let nextTitle = row.title;
 			let nextDescription = row.description;
@@ -428,11 +440,10 @@ grievanceRoutes.delete('/:id', (c) => {
 	const row = requireGrievance(db, c.req.param('id'));
 
 	if (user.role === 'student') {
-		if (row.student_id !== user.id) {
-			throw new HttpError(403, 'unauthorized', 'Only the student owner can withdraw this grievance.');
-		}
-		if (row.status === 'resolved') {
-			throw new HttpError(409, 'conflict', 'Resolved grievances cannot be withdrawn.');
+		const withdrawPolicy = GrievanceGuard.canWithdraw(user, row);
+		if (!withdrawPolicy.allowed) {
+			trackAuthzFailure(extractIp(c), user.id, row.id, db);
+			enforce(withdrawPolicy);
 		}
 		softDeleteGrievance(db, row.id);
 		recordAuditLog(db, {
@@ -469,12 +480,10 @@ grievanceRoutes.post('/:id/withdraw', (c) => {
 	const meta = getClientMeta(c);
 	const user = requireUser(c, db);
 	const row = requireGrievance(db, c.req.param('id'));
-
-	if (user.role !== 'student' || row.student_id !== user.id) {
-		throw new HttpError(403, 'unauthorized', 'Only the student owner can withdraw this grievance.');
-	}
-	if (row.status === 'resolved') {
-		throw new HttpError(409, 'conflict', 'Resolved grievances cannot be withdrawn.');
+	const withdrawPolicy = GrievanceGuard.canWithdraw(user, row);
+	if (!withdrawPolicy.allowed) {
+		trackAuthzFailure(extractIp(c), user.id, row.id, db);
+		enforce(withdrawPolicy);
 	}
 	softDeleteGrievance(db, row.id);
 	recordAuditLog(db, {
@@ -493,12 +502,11 @@ grievanceRoutes.post('/:id/archive', (c) => {
 	const db = c.get('db');
 	const meta = getClientMeta(c);
 	const user = requireUser(c, db);
-	if (user.role !== 'warden') {
-		throw new HttpError(403, 'unauthorized', 'Only wardens can archive grievances.');
-	}
 	const row = requireGrievance(db, c.req.param('id'));
-	if (row.status !== 'resolved') {
-		throw new HttpError(409, 'conflict', 'Only resolved grievances can be archived.');
+	const archivePolicy = GrievanceGuard.canArchive(user, row);
+	if (!archivePolicy.allowed) {
+		trackAuthzFailure(extractIp(c), user.id, row.id, db);
+		enforce(archivePolicy);
 	}
 
 	archiveGrievance(db, row.id);
