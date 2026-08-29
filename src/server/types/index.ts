@@ -163,5 +163,6 @@ export type ErrorCode =
 	| 'not_found'
 	| 'conflict'
 	| 'too_many_requests'
+	| 'payload_too_large'
 	| 'internal';
 
