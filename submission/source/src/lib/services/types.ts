@@ -26,6 +26,7 @@ export interface CreateGrievanceInput {
 	title: string;
 	category: GrievanceCategory;
 	description: string;
+	isAnonymous?: boolean;
 	attachment?: AttachmentInput | null;
 }
 

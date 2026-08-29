@@ -61,6 +61,7 @@ export interface Grievance {
 	updatedAt: string; // ISO timestamp
 	deletedAt?: string | null;
 	archivedAt?: string | null;
+	isAnonymous?: boolean;
 	attachments: Attachment[];
 	comments: Comment[];
 }

@@ -17,6 +17,7 @@
 	let title = $state('');
 	let category = $state<GrievanceCategory | ''>('');
 	let description = $state('');
+	let isAnonymous = $state(false);
 	let attachment = $state<AttachmentInput | null>(null);
 
 	let submitted = $state(false);
@@ -65,13 +66,16 @@
 			title: title.trim(),
 			category: category as GrievanceCategory,
 			description: description.trim(),
+			isAnonymous,
 			attachment
 		});
 		submitting = false;
 
 		if (result.ok) {
 			toast.success(`Grievance ${result.data.id} filed.`, {
-				description: 'You can track its status from your grievances list.'
+				description: isAnonymous
+					? '🎭 Filed in Anonymous Mode. Your identity is hidden from the warden.'
+					: 'You can track its status from your grievances list.'
 			});
 			await goto(`/student/grievances/${result.data.id}`);
 		} else {
@@ -146,6 +150,24 @@
 				{#if errors.description}
 					<p id="description-error" class="text-destructive text-sm" role="alert">{errors.description}</p>
 				{/if}
+			</div>
+
+			<!-- Anonymous Whistleblower Mode UI Toggle -->
+			<div class="rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
+				<input
+					type="checkbox"
+					id="isAnonymous"
+					bind:checked={isAnonymous}
+					class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+				/>
+				<div class="space-y-1">
+					<Label for="isAnonymous" class="font-medium cursor-pointer flex items-center gap-2">
+						<span>🎭 Submit Anonymously (Whistleblower Mask)</span>
+					</Label>
+					<p class="text-xs text-muted-foreground">
+						Protects your privacy by masking your name, email, and room number (e.g. <code>ANON-4F1A</code>) when viewed by the Warden. You can still track and comment on it from your dashboard.
+					</p>
+				</div>
 			</div>
 
 			<AttachmentPicker
