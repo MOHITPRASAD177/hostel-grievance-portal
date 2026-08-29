@@ -29,6 +29,13 @@ notificationRoutes.patch('/:id/read', (c) => {
 	return c.json({ ok: true });
 });
 
+notificationRoutes.post('/:id/read', (c) => {
+	const db = c.get('db');
+	const user = requireUser(c, db);
+	markNotificationRead(db, c.req.param('id'), user.id);
+	return c.json({ ok: true });
+});
+
 notificationRoutes.post('/read-all', (c) => {
 	const db = c.get('db');
 	const user = requireUser(c, db);
