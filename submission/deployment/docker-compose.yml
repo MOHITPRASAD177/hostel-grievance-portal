@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  hostelgrievance:
+    build:
+      context: ../..
+      dockerfile: submission/deployment/Dockerfile
+    container_name: hostelgrievance-app
+    ports:
+      - "3001:3001"
+      - "5173:5173"
+    environment:
+      - PORT=3001
+      - HOST=0.0.0.0
+      - DATABASE_PATH=data/hostel.db
+      - UPLOADS_DIR=uploads
+      - ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+    volumes:
+      - ../../data:/app/data
+      - ../../uploads:/app/uploads
+    restart: unless-stopped

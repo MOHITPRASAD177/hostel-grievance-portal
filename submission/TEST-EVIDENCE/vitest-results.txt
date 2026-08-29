@@ -1,0 +1,41 @@
+﻿
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/mohit_a2o9gf3/Desktop/hostelgrievance[39m
+
+[90mstdout[2m | src/server/app.test.ts[2m > [22m[2mHostelGrievance API baseline[2m > [22m[2mstatus changes work for wardens and are forbidden for students
+[22m[39m[Notification Dispatch] To user stu-1 (Grievance Status Updated): Your grievance "Mess tables not wiped before dinner" status has been changed to "In Progress".
+
+[90mstdout[2m | src/server/app.test.ts[2m > [22m[2mHostelGrievance API baseline[2m > [22m[2mcreates and manages notifications for students upon warden actions
+[22m[39m[Notification Dispatch] To user stu-1 (Grievance Status Updated): Your grievance "Room heater issue" status has been changed to "In Progress".
+
+[90mstdout[2m | src/server/app.test.ts[2m > [22m[2mHostelGrievance API baseline[2m > [22m[2msupports student withdrawal and warden archiving without permanent data loss
+[22m[39m[Notification Dispatch] To user stu-1 (Grievance Status Updated): Your grievance "Broken chair replacement" status has been changed to "Resolved".
+
+ [32mΓ£ô[39m src/server/app.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 12116[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m login works for dummy student and warden accounts [33m 612[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m rejects invalid credentials [33m 418[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m current-user works after login and fails after logout [33m 463[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m student can create a grievance [33m 426[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m student can retrieve a permitted grievance [33m 395[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m student cannot access another studentΓÇÖs grievance [33m 395[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m warden can access management functionality [33m 388[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m comments work for permitted users [33m 392[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m status changes work for wardens and are forbidden for students [33m 514[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m attachment metadata and storage work [33m 639[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m rejects oversized and disallowed attachments [33m 416[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m lets a student edit their own open grievance but not a resolved one [33m 621[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m returns 404 for unknown grievance ids without leaking internals [33m 388[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m enforces password complexity rules on password change and resets [33m 1239[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m warden can generate reset token and user can reset password [33m 978[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m warden can directly reset user password [33m 733[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m records audit logs and allows wardens to inspect them [33m 523[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m creates and manages notifications for students upon warden actions [33m 525[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m supports student withdrawal and warden archiving without permanent data loss [33m 526[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m triggers Honeytoken Canary Trap upon accessing deceptive GRV-0000 [33m 385[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m supports Anonymous Whistleblower mode with zero-knowledge author masking for wardens [33m 487[2mms[22m[39m
+     [33m[2mΓ£ô[22m[39m verifies cryptographic hash-chain integrity for audit logs and provides SecOps telemetry [33m 377[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m23 passed[39m[22m[90m (23)[39m
+[2m   Start at [22m 12:53:34
+[2m   Duration [22m 13.09s[2m (transform 376ms, setup 0ms, import 581ms, tests 12.12s, environment 0ms)[22m
+
