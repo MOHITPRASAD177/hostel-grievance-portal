@@ -126,4 +126,25 @@ export function applySchema(db: Database): void {
 	db.exec('CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);');
 	db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);');
 	db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, is_read);');
+
+	// Ensure honeytoken canary grievance exists
+	const hasCanary = db.prepare('SELECT id FROM grievances WHERE is_canary = 1 LIMIT 1').get();
+	if (!hasCanary) {
+		const firstUser = db.prepare('SELECT id FROM users LIMIT 1').get() as { id: string } | undefined;
+		if (firstUser) {
+			db.prepare(
+				`INSERT OR IGNORE INTO grievances (id, student_id, title, category, description, status, is_canary, created_at, updated_at)
+				 VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
+			).run(
+				'GRV-0000',
+				firstUser.id,
+				'Confidential: Warden Disciplinary Audit Log 2026',
+				'Other',
+				'Restricted internal hostel administration notes and disciplinary records.',
+				'open',
+				new Date().toISOString(),
+				new Date().toISOString()
+			);
+		}
+	}
 }
