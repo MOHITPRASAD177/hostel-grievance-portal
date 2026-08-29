@@ -153,8 +153,13 @@
 						<div>
 							<dt class="text-muted-foreground text-xs">Student</dt>
 							<dd>
-								{g.student.name}
-								<span class="text-muted-foreground block text-xs">{g.student.room ?? '—'}</span>
+								{#if g.isAnonymous}
+									<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 mb-0.5">🎭 Whistleblower</span>
+									<span class="block font-mono text-xs text-muted-foreground">{g.student.name}</span>
+								{:else}
+									{g.student.name}
+									<span class="text-muted-foreground block text-xs">{g.student.room ?? '—'}</span>
+								{/if}
 							</dd>
 						</div>
 						<div>
