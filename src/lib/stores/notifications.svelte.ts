@@ -5,15 +5,24 @@ let notifications = $state<Notification[]>([]);
 let unreadCount = $state<number>(0);
 let loading = $state<boolean>(false);
 
+export function clearNotifications(): void {
+	notifications = [];
+	unreadCount = 0;
+	loading = false;
+}
+
 export async function fetchNotifications(): Promise<void> {
 	if (!browser) return;
 	loading = true;
 	try {
-		const res = await fetch('/api/notifications');
+		const res = await fetch('/api/notifications', { credentials: 'include' });
 		if (res.ok) {
 			const json = await res.json();
 			notifications = json.data ?? [];
 			unreadCount = json.unreadCount ?? 0;
+		} else {
+			notifications = [];
+			unreadCount = 0;
 		}
 	} catch {
 		// Ignore network errors in background poll
@@ -24,7 +33,7 @@ export async function fetchNotifications(): Promise<void> {
 
 export async function markAsRead(id: string): Promise<void> {
 	try {
-		const res = await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
+		const res = await fetch(`/api/notifications/${id}/read`, { method: 'POST', credentials: 'include' });
 		if (res.ok) {
 			notifications = notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n));
 			unreadCount = Math.max(0, unreadCount - 1);
@@ -36,7 +45,7 @@ export async function markAsRead(id: string): Promise<void> {
 
 export async function markAllAsRead(): Promise<void> {
 	try {
-		const res = await fetch('/api/notifications/read-all', { method: 'POST' });
+		const res = await fetch('/api/notifications/read-all', { method: 'POST', credentials: 'include' });
 		if (res.ok) {
 			notifications = notifications.map((n) => ({ ...n, isRead: true }));
 			unreadCount = 0;

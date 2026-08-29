@@ -5,6 +5,7 @@
  */
 import { authService } from '$lib/services';
 import type { User } from '$lib/types';
+import { clearNotifications, fetchNotifications } from '$lib/stores/notifications.svelte';
 
 // Restored synchronously (mock: localStorage) so route guards can rely on it
 // during the very first load without an async race.
@@ -26,6 +27,8 @@ export async function signIn(email: string, password: string): Promise<{ ok: boo
 	const result = await authService.signIn(email, password);
 	if (result.ok) {
 		current = result.user;
+		clearNotifications();
+		fetchNotifications();
 		return { ok: true };
 	}
 	return { ok: false, error: result.error };
@@ -34,4 +37,5 @@ export async function signIn(email: string, password: string): Promise<{ ok: boo
 export async function signOut(): Promise<void> {
 	await authService.signOut();
 	current = null;
+	clearNotifications();
 }
