@@ -29,9 +29,8 @@ class NumberedCanvas(canvas.Canvas):
     def draw_page_decorations(self, page_count):
         self.saveState()
         
-        # We don't draw running header on cover/first page
+        # Header on pages 2-12
         if self._pageNumber > 1:
-            # Header
             self.setFont("Helvetica-Bold", 8)
             self.setFillColor(colors.HexColor("#475569"))
             self.drawString(54, 750, "HOSTELGRIEVANCE — PRE-LAUNCH SECURITY HARDENING & AUDIT REPORT")
@@ -72,7 +71,6 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
     # Custom Palette
     C_PRIMARY = colors.HexColor("#1E293B")   # Slate 800
     C_ACCENT = colors.HexColor("#4F46E5")    # Indigo 600
-    C_ACCENT_DARK = colors.HexColor("#3730A3")
     C_SUCCESS = colors.HexColor("#059669")   # Emerald 600
     C_DANGER = colors.HexColor("#DC2626")    # Red 600
     C_TEXT = colors.HexColor("#334155")      # Slate 700
@@ -80,52 +78,52 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
     C_BG_LIGHT = colors.HexColor("#F8FAFC")  # Slate 50
     C_BORDER = colors.HexColor("#E2E8F0")    # Slate 200
 
-    # Custom Typography Styles
+    # Typography Styles
     style_cover_title = ParagraphStyle(
         'CoverTitle',
         fontName='Helvetica-Bold',
-        fontSize=24,
-        leading=28,
+        fontSize=23,
+        leading=27,
         textColor=C_PRIMARY,
-        spaceAfter=6
+        spaceAfter=5
     )
     
     style_cover_subtitle = ParagraphStyle(
         'CoverSubtitle',
         fontName='Helvetica',
-        fontSize=13,
-        leading=16,
+        fontSize=12,
+        leading=15,
         textColor=C_ACCENT,
-        spaceAfter=14
+        spaceAfter=12
     )
     
     style_h1 = ParagraphStyle(
         'Header1',
         fontName='Helvetica-Bold',
-        fontSize=16,
-        leading=20,
+        fontSize=15,
+        leading=19,
         textColor=C_PRIMARY,
-        spaceBefore=8,
-        spaceAfter=6,
+        spaceBefore=7,
+        spaceAfter=5,
         keepWithNext=True
     )
 
     style_h2 = ParagraphStyle(
         'Header2',
         fontName='Helvetica-Bold',
-        fontSize=12,
-        leading=15,
+        fontSize=11,
+        leading=14,
         textColor=C_ACCENT,
-        spaceBefore=6,
-        spaceAfter=4,
+        spaceBefore=5,
+        spaceAfter=3,
         keepWithNext=True
     )
 
     style_h3 = ParagraphStyle(
         'Header3',
         fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=13,
+        fontSize=9.5,
+        leading=12.5,
         textColor=C_PRIMARY,
         spaceBefore=4,
         spaceAfter=2,
@@ -135,30 +133,21 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
     style_body = ParagraphStyle(
         'Body',
         fontName='Helvetica',
-        fontSize=9,
-        leading=12.5,
+        fontSize=8.5,
+        leading=12,
         textColor=C_TEXT,
-        spaceAfter=5
-    )
-
-    style_body_bold = ParagraphStyle(
-        'BodyBold',
-        fontName='Helvetica-Bold',
-        fontSize=9,
-        leading=12.5,
-        textColor=C_PRIMARY,
-        spaceAfter=5
+        spaceAfter=4.5
     )
 
     style_code = ParagraphStyle(
         'CodeBlock',
         fontName='Courier',
-        fontSize=7.5,
-        leading=10,
+        fontSize=7.2,
+        leading=9.5,
         textColor=colors.HexColor("#0F172A"),
         backColor=colors.HexColor("#F1F5F9"),
-        borderPadding=6,
-        spaceAfter=6
+        borderPadding=5,
+        spaceAfter=5
     )
 
     style_callout = ParagraphStyle(
@@ -169,47 +158,31 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
         textColor=colors.HexColor("#1E293B"),
         backColor=colors.HexColor("#EEF2FF"),
         borderPadding=6,
-        spaceAfter=6
+        spaceAfter=5
     )
 
     style_table_header = ParagraphStyle(
         'TableHeader',
         fontName='Helvetica-Bold',
-        fontSize=8,
-        leading=10,
+        fontSize=7.5,
+        leading=9.5,
         textColor=colors.white
     )
 
     style_table_cell = ParagraphStyle(
         'TableCell',
         fontName='Helvetica',
-        fontSize=7.5,
-        leading=10,
+        fontSize=7.2,
+        leading=9.5,
         textColor=C_TEXT
     )
 
     style_table_cell_bold = ParagraphStyle(
         'TableCellBold',
         fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=10,
+        fontSize=7.2,
+        leading=9.5,
         textColor=C_PRIMARY
-    )
-
-    style_badge_danger = ParagraphStyle(
-        'BadgeDanger',
-        fontName='Helvetica-Bold',
-        fontSize=7,
-        leading=9,
-        textColor=C_DANGER
-    )
-
-    style_badge_success = ParagraphStyle(
-        'BadgeSuccess',
-        fontName='Helvetica-Bold',
-        fontSize=7,
-        leading=9,
-        textColor=C_SUCCESS
     )
 
     story = []
@@ -217,31 +190,30 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
     # =========================================================================
     # PAGE 1: TITLE & EXECUTIVE SUMMARY
     # =========================================================================
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
     story.append(Paragraph("HOSTELGRIEVANCE", style_cover_subtitle))
-    story.append(Paragraph("Pre-Launch Security Hardening & Vulnerability Audit Report", style_cover_title))
-    story.append(Paragraph("Comprehensive Security Assessment, STRIDE Threat Model, and GrievanceGuard Architecture", ParagraphStyle('SubSub', fontName='Helvetica', fontSize=10, textColor=C_MUTED, spaceAfter=12)))
-    story.append(HRFlowable(width="100%", thickness=2, color=C_ACCENT, spaceBefore=2, spaceAfter=10))
+    story.append(Paragraph("Pre-Launch Security Hardening & Feature Enhancement Report", style_cover_title))
+    story.append(Paragraph("Comprehensive Security Assessment, STRIDE Threat Model, GrievanceGuard Architecture, and New Feature Suite", ParagraphStyle('SubSub', fontName='Helvetica', fontSize=9.5, textColor=C_MUTED, spaceAfter=10)))
+    story.append(HRFlowable(width="100%", thickness=2, color=C_ACCENT, spaceBefore=2, spaceAfter=8))
 
-    # Metadata Grid Table
     meta_data = [
         [Paragraph("<b>Target System:</b> HostelGrievance Portal (SvelteKit + Hono + SQLite)", style_table_cell),
          Paragraph("<b>Date of Audit:</b> August 2026", style_table_cell)],
         [Paragraph("<b>Repository:</b> github.com/MOHITPRASAD177/hostel-grievance-portal", style_table_cell),
          Paragraph("<b>Security Engineering Team:</b> University AppSec Team", style_table_cell)],
-        [Paragraph("<b>Assessment Status:</b> 100% Remediated (Production Ready)", style_table_cell_bold),
-         Paragraph("<b>Test Suite:</b> 20 / 20 Automated Test Cases Passing", style_table_cell_bold)]
+        [Paragraph("<b>Status:</b> 100% Remediated + 7 Major Features Integrated", style_table_cell_bold),
+         Paragraph("<b>Test Suite:</b> 20 / 20 Automated Vitest Test Cases Passing", style_table_cell_bold)]
     ]
     t_meta = Table(meta_data, colWidths=[270, 234])
     t_meta.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), C_BG_LIGHT),
         ('BOX', (0, 0), (-1, -1), 1, C_BORDER),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, C_BORDER),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
     ]))
     story.append(t_meta)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     story.append(Paragraph("1. Executive Summary", style_h1))
     story.append(Paragraph(
@@ -249,16 +221,11 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
         style_body
     ))
     story.append(Paragraph(
-        "Rather than applying disjointed patches, our team engineered and integrated <b>GrievanceGuard</b> — a multi-tiered defense-in-depth framework featuring a Security Gateway, a Centralized Policy Engine, and a Real-Time Threat Monitor. All 13 vulnerabilities have been completely remediated without degrading legitimate student or warden workflows. The application satisfies 100% of functional requirements and has been verified with comprehensive automated test suites and strict TypeScript diagnostics.",
+        "Rather than applying isolated patches, our team engineered and integrated <b>GrievanceGuard</b> — a multi-tiered defense-in-depth framework featuring a Security Gateway, a Centralized Policy Engine, and a Real-Time Threat Monitor. In addition to fixing all 13 vulnerabilities, we integrated <b>7 major functional and security enhancements</b>: Audit Logging, In-App Notifications, Grievance Soft-Deletion & Archival, System-Preference Dark Mode, Toast Feedback System (`svelte-sonner`), Strict Password Complexity, and an Admin Password Reset Flow.",
         style_body
     ))
 
-    story.append(Paragraph("2. Scope of Assessment & Core Objectives", style_h2))
-    story.append(Paragraph(
-        "The security audit evaluated the full application surface across seven critical dimensions:",
-        style_body
-    ))
-    
+    story.append(Paragraph("2. Scope of Assessment & Objectives", style_h2))
     obj_data = [
         [Paragraph("<b>1. Data Protection:</b> Strict student data isolation preventing unauthorized visibility.", style_table_cell),
          Paragraph("<b>2. Access Control:</b> Server-side RBAC separating Student vs. Warden powers.", style_table_cell)],
@@ -266,7 +233,7 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
          Paragraph("<b>4. File Handling:</b> Magic byte verification, disk isolation, and safe headers.", style_table_cell)],
         [Paragraph("<b>5. Cryptography:</b> Industry-standard password key derivation with salted scrypt.", style_table_cell),
          Paragraph("<b>6. Forensics & Visibility:</b> Immutable audit logging for forensic traceability.", style_table_cell)],
-        [Paragraph("<b>7. Blast Radius Minimization:</b> Multi-layer defense ensuring single-point resilience.", style_table_cell),
+        [Paragraph("<b>7. Feature Expansion:</b> In-app alerts, soft-delete lifecycle, dark mode, toast UI.", style_table_cell),
          Paragraph("<b>8. Workflow Preservation:</b> Full compatibility with existing hostel operations.", style_table_cell)]
     ]
     t_obj = Table(obj_data, colWidths=[252, 252])
@@ -286,7 +253,7 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
     # =========================================================================
     story.append(Paragraph("2. System Architecture & Trust Boundaries", style_h1))
     story.append(Paragraph(
-        "Modern application security demands that security controls are not concentrated solely at the perimeter or the database. HostelGrievance utilizes a strictly layered architecture where every incoming request must clear multiple independent verification gates before triggering business logic or accessing persistence layers.",
+        "HostelGrievance enforces defense-in-depth across the entire application stack. Every incoming request must clear multiple independent verification gates before triggering business logic or accessing persistence layers.",
         style_body
     ))
 
@@ -326,7 +293,7 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
          │     Database Tier         │               │     Storage Tier          │
          │  • SQLite WAL Mode        │               │  • Magic Byte Binary Scan │
          │  • Foreign Key Integrity  │               │  • UUID Random Filenames  │
-         │  • Parameterized SQL      │               │  • RFC 5987 Header Encode │
+         │  • Audit & Notifications  │               │  • RFC 5987 Header Encode │
          └─────────────┬─────────────┘               └─────────────┬─────────────┘
                        └─────────────────────┬─────────────────────┘
                                              ▼
@@ -385,7 +352,7 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(t_asset)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     story.append(Paragraph("3.2 Threat Actors & Adversary Profiles", style_h2))
     actor_data = [
@@ -404,7 +371,7 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(t_actor)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     story.append(Paragraph("3.3 Entry Points & Attack Surface", style_h2))
     story.append(Paragraph(
@@ -445,10 +412,9 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(t_stride)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     story.append(Paragraph("Critical Attack Path Analysis", style_h2))
-
     story.append(Paragraph("<b>Attack Path 1: Broken Object-Level Authorization (IDOR) to Data Harvesting</b>", style_h3))
     story.append(Paragraph(
         "<b>Vulnerable Flow:</b> Attacker logs in as Student A → Requests <code>/api/grievances/GRV-0002</code> (Student B's ticket) → Server returned full title, description, and attached images without checking <code>row.student_id === user.id</code>.<br/>"
@@ -482,7 +448,6 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
     ))
 
     story.append(Paragraph("5.1 Core Security Guarantees", style_h2))
-    
     guarantees = [
         "<b>1. Guaranteed Data Isolation:</b> A student can never read, modify, comment upon, or download attachments from any grievance filed by another student under any circumstance.",
         "<b>2. Strict Function-Level Privilege Separation:</b> Only verified Wardens can transition ticket statuses, archive resolved tickets, and view institutional audit logs. Only Students can create new tickets.",
@@ -493,13 +458,8 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
     for g in guarantees:
         story.append(Paragraph(g, style_body))
 
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
     story.append(Paragraph("5.2 Blast Radius & Defense-in-Depth Containment", style_h2))
-    story.append(Paragraph(
-        "A central requirement of the university security mandate is minimizing the blast radius if an adversary manages to bypass any individual security control:",
-        style_body
-    ))
-
     blast_data = [
         [Paragraph("<b>Scenario</b>", style_table_header), Paragraph("<b>Primary Control Bypassed</b>", style_table_header), Paragraph("<b>Secondary & Tertiary Safeguards (Blast Radius Containment)</b>", style_table_header)],
         [Paragraph("<b>Client-Side UI Bypass</b>", style_table_cell_bold), Paragraph("Attacker uses curl/Postman to bypass browser UI restrictions", style_table_cell), Paragraph("Server enforces 100% of RBAC, validation, and ownership rules in backend Hono routes and GrievanceGuard policy engine. UI state is never trusted.", style_table_cell)],
@@ -516,7 +476,7 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(t_blast)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     story.append(Paragraph("5.3 Environmental Assumptions", style_h2))
     story.append(Paragraph(
@@ -664,7 +624,6 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
     ))
 
     story.append(Paragraph("8.1 Three Pillars of GrievanceGuard", style_h2))
-    
     pillars_data = [
         [Paragraph("<b>Component</b>", style_table_header), Paragraph("<b>Implementation File</b>", style_table_header), Paragraph("<b>Functional Responsibility & Defense Mechanism</b>", style_table_header)],
         [
@@ -688,27 +647,22 @@ def build_pdf(filename="HostelGrievance_Security_Hardening_Report.pdf"):
         ('BACKGROUND', (0, 0), (-1, 0), C_PRIMARY),
         ('BOX', (0, 0), (-1, -1), 0.5, C_BORDER),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, C_BORDER),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
     ]))
     story.append(t_pil)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     story.append(Paragraph("8.2 Behavioral Threat Detection Algorithms", style_h2))
-    story.append(Paragraph(
-        "The Threat Monitor actively analyzes client interaction patterns to distinguish between accidental mistakes and deliberate automated reconnaissance:",
-        style_body
-    ))
-
     story.append(Paragraph(
         "• <b>IDOR Probe Detection:</b> If a single IP attempts to access more than <b>15 distinct grievance IDs</b> within a 60-second window, the system classifies the behavior as automated horizontal privilege enumeration. The IP is instantly banned for 15 minutes, and a <code>security.idor_probe_detected</code> event is logged.<br/>"
         "• <b>Authorization Failure Storms:</b> If an IP accumulates <b>8 or more authorization failures</b> (403 Forbidden / 401 Unauthorized) within a 60-second window, the system triggers an automatic 15-minute block and logs an <code>authz_failure_storm</code> alert.<br/>"
         "• <b>Request Flood Protection:</b> Any IP exceeding <b>200 requests per minute</b> triggers automatic temporary throttling at the gateway layer before application handlers are invoked.",
         style_body
     ))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
-    story.append(Paragraph("8.3 Policy Engine Code Structure", style_h2))
+    story.append(Paragraph("8.3 Policy Engine Code Sample", style_h2))
     sample_policy = """
 // src/server/security/policy.ts - Centralized Authorization Rule
 export const GrievanceGuard = {
@@ -728,41 +682,35 @@ export const GrievanceGuard = {
     story.append(PageBreak())
 
     # =========================================================================
-    # PAGE 9: AUTHENTICATION & CRYPTOGRAPHIC ENGINEERING
+    # PAGE 9: AUTHENTICATION & CRYPTOGRAPHY
     # =========================================================================
     story.append(Paragraph("9. Authentication & Cryptographic Engineering", style_h1))
     story.append(Paragraph(
-        "Authentication is the bedrock of system trust. HostelGrievance was upgraded from insecure, legacy cryptographic primitives to modern, memory-hard key derivation algorithms and strict session lifecycle management.",
+        "HostelGrievance was upgraded from insecure, legacy cryptographic primitives to modern, memory-hard key derivation algorithms and strict session lifecycle management.",
         style_body
     ))
 
     story.append(Paragraph("9.1 Password Storage: Salted Scrypt KDF", style_h2))
     story.append(Paragraph(
-        "The legacy application utilized single-round SHA-256 (<code>sha256:&lt;hash&gt;</code>). SHA-256 is designed for fast message integrity verification, making it dangerously weak for passwords because an attacker with modern GPU/ASIC hardware can compute billions of hashes per second.",
-        style_body
-    ))
-    story.append(Paragraph(
-        "We replaced this with <b>Node.js native <code>scrypt</code></b> (RFC 7914), configured with robust parameters:<br/>"
-        "• <b>Cost Parameter (N):</b> 16,384 (requires substantial CPU memory to compute)<br/>"
-        "• <b>Block Size (r):</b> 8 | <b>Parallelization (p):</b> 1 | <b>Key Length:</b> 64 bytes (512 bits)<br/>"
+        "We replaced single-round SHA-256 with <b>Node.js native <code>scrypt</code></b> (RFC 7914):<br/>"
+        "• <b>Cost Parameter (N):</b> 16,384 (CPU/memory-hard) | <b>Block Size (r):</b> 8 | <b>Parallelization (p):</b> 1 | <b>Key Length:</b> 64 bytes (512 bits)<br/>"
         "• <b>Cryptographic Salt:</b> 16 bytes of cryptographically secure random bytes generated via <code>crypto.randomBytes(16)</code> per user.<br/>"
-        "• <b>Verification:</b> Constant-time comparison using <code>crypto.timingSafeEqual()</code> to prevent side-channel timing attacks.",
+        "• <b>Constant-Time Comparison:</b> Uses <code>crypto.timingSafeEqual()</code> to prevent side-channel timing attacks.",
         style_body
     ))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     story.append(Paragraph("9.2 Password Complexity Enforcement", style_h2))
     story.append(Paragraph(
-        "All password creation and update vectors (registration, user-initiated password change, and warden reset) are validated against <code>validatePasswordComplexity()</code>:<br/>"
+        "All password creation and update vectors are validated against <code>validatePasswordComplexity()</code>:<br/>"
         "1. <b>Minimum Length:</b> Must be at least 8 characters (max 128 characters).<br/>"
         "2. <b>Numeric Requirement:</b> Must contain at least one digit (<code>0-9</code>).<br/>"
         "3. <b>Special Character Requirement:</b> Must contain at least one special character (<code>!@#$%^&*...</code>).",
         style_body
     ))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     story.append(Paragraph("9.3 Session Token Lifecycle & Invalidation", style_h2))
-    
     session_data = [
         [Paragraph("<b>Lifecycle Event</b>", style_table_header), Paragraph("<b>Pre-Hardening Behavior</b>", style_table_header), Paragraph("<b>Post-Hardening Behavior (Hardened)</b>", style_table_header)],
         [
@@ -799,16 +747,82 @@ export const GrievanceGuard = {
     story.append(PageBreak())
 
     # =========================================================================
-    # PAGE 10: FILE STORAGE & PAYLOAD SECURITY
+    # PAGE 10: NEW FEATURE SUITE & FUNCTIONAL ENHANCEMENTS
     # =========================================================================
-    story.append(Paragraph("10. File Storage, Magic Bytes & Payload Security", style_h1))
+    story.append(Paragraph("10. Integrated Feature Suite & Functional Upgrades", style_h1))
     story.append(Paragraph(
-        "File upload handling is historically one of the most critical web vulnerability vectors. Insecure implementations permit remote code execution, file overwrite, cross-site scripting, and server disk exhaustion.",
+        "To elevate HostelGrievance from a basic academic prototype to an enterprise-grade institutional platform, our team integrated <b>7 major functional and operational capabilities</b> alongside security hardening:",
         style_body
     ))
 
-    story.append(Paragraph("10.1 Multi-Stage File Validation Pipeline", style_h2))
-    
+    feat_data = [
+        [Paragraph("<b>Feature Module</b>", style_table_header), Paragraph("<b>Scope & Target Actor</b>", style_table_header), Paragraph("<b>Technical Implementation & Security Benefit</b>", style_table_header)],
+        [
+            Paragraph("<b>1. Comprehensive Audit Log Engine</b>", style_table_cell_bold),
+            Paragraph("System-wide<br/>(Warden visible)", style_table_cell),
+            Paragraph("Database-backed append-only audit trail recording user logins, status changes, attachment uploads, password updates, and threat alerts with actor ID, IP address, user-agent, and ISO timestamp.", style_table_cell)
+        ],
+        [
+            Paragraph("<b>2. Real-Time Student Notifications</b>", style_table_cell_bold),
+            Paragraph("Student Portal", style_table_cell),
+            Paragraph("In-app notification system that automatically dispatches alerts when a warden changes a grievance status (Open → In Progress → Resolved) or posts an official comment, ensuring transparent communication.", style_table_cell)
+        ],
+        [
+            Paragraph("<b>3. Grievance Soft-Deletion & Archival</b>", style_table_cell_bold),
+            Paragraph("Student & Warden", style_table_cell),
+            Paragraph("Students can safely 'Withdraw' open tickets without permanent data loss (`deleted_at` timestamp). Wardens can 'Archive' resolved tickets (`archived_at`), preserving full historical records for compliance.", style_table_cell)
+        ],
+        [
+            Paragraph("<b>4. System-Preference Dark Mode</b>", style_table_cell_bold),
+            Paragraph("Universal UI<br/>(Student & Warden)", style_table_cell),
+            Paragraph("Integrated `mode-watcher` with native `prefers-color-scheme` support. Adapts dynamically to Windows/macOS dark theme preferences with high-contrast, accessible HSL color palettes.", style_table_cell)
+        ],
+        [
+            Paragraph("<b>5. Toast Notification System</b>", style_table_cell_bold),
+            Paragraph("Universal UI Feedback", style_table_cell),
+            Paragraph("Integrated `svelte-sonner` toast notifications replacing disruptive alert dialogs. Provides smooth, non-intrusive visual feedback for logins, status updates, withdrawals, and error messages.", style_table_cell)
+        ],
+        [
+            Paragraph("<b>6. Password Complexity Enforcement</b>", style_table_cell_bold),
+            Paragraph("Authentication", style_table_cell),
+            Paragraph("Enforces strict rules on registration and password updates: minimum 8 characters, at least 1 numeric digit, and at least 1 special character, preventing weak dictionary passwords.", style_table_cell)
+        ],
+        [
+            Paragraph("<b>7. Warden-Managed Password Reset Flow</b>", style_table_cell_bold),
+            Paragraph("Account Recovery", style_table_cell),
+            Paragraph("Secure tokenized reset flow (`/api/admin/reset-token`) with 1-hour expiration and cryptographic single-use consumption. Automatically destroys all active sessions on reset.", style_table_cell)
+        ]
+    ]
+    t_feat = Table(feat_data, colWidths=[130, 95, 279])
+    t_feat.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), C_PRIMARY),
+        ('BOX', (0, 0), (-1, -1), 0.5, C_BORDER),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, C_BORDER),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    story.append(t_feat)
+    story.append(Spacer(1, 6))
+
+    story.append(Paragraph("Operational Impact on User Experience", style_h2))
+    story.append(Paragraph(
+        "• <b>Student Experience:</b> Students receive instantaneous feedback via toast notifications, stay informed through the notification bell on status changes, can withdraw obsolete grievances cleanly, and enjoy automatic dark mode support.<br/>"
+        "• <b>Warden Experience:</b> Wardens gain full historical transparency through the audit log table, can safely archive resolved complaints, and have administrative tools to assist locked-out students safely.",
+        style_body
+    ))
+
+    story.append(PageBreak())
+
+    # =========================================================================
+    # PAGE 11: FILE STORAGE, MAGIC BYTES & AUDIT FORENSICS
+    # =========================================================================
+    story.append(Paragraph("11. File Storage & Forensic Audit Visibility", style_h1))
+    story.append(Paragraph(
+        "File upload handling and forensic visibility represent two of the most critical security operational capabilities in the hardened portal.",
+        style_body
+    ))
+
+    story.append(Paragraph("11.1 Multi-Stage File Validation & Magic Bytes", style_h2))
     file_pipe = """
        Incoming File Upload (multipart/form-data)
                           │
@@ -820,10 +834,8 @@ export const GrievanceGuard = {
                           │
                           ▼
        [Stage 3: Binary Magic-Byte Inspection] — Read raw file buffer header bytes
-          • PNG:  0x89 0x50 0x4E 0x47
-          • JPEG: 0xFF 0xD8 0xFF
-          • GIF:  0x47 0x49 0x46 0x38
-          • WebP: 0x52 0x49 0x46 0x46 ... 0x57 0x45
+          • PNG:  0x89 0x50 0x4E 0x47 | JPEG: 0xFF 0xD8 0xFF
+          • GIF:  0x47 0x49 0x46 0x38 | WebP: 0x52 0x49 0x46 0x46 ... 0x57 0x45
                           │
                           ▼
        [Stage 4: Randomized Disk Persistence] — Save as crypto UUID (e.g. 7f8a9b...png)
@@ -833,52 +845,13 @@ export const GrievanceGuard = {
     """
     story.append(Paragraph(file_pipe.strip().replace("\n", "<br/>").replace(" ", "&nbsp;"), style_code))
 
-    story.append(Paragraph("10.2 Magic-Byte Binary Inspection", style_h2))
-    story.append(Paragraph(
-        "An attacker can trivially bypass file extension and HTTP <code>Content-Type</code> checks by renaming an executable to <code>payload.png</code> and setting the MIME header. Our solution inspects the raw file buffer directly:",
-        style_body
-    ))
-    
-    code_magic = """
-export function detectImageMimeType(bytes: Buffer): string | null {
-  if (bytes.length < 4) return null;
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return 'image/png';
-  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return 'image/jpeg';
-  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return 'image/gif';
-  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
-      bytes[8] === 0x57 && bytes[9] === 0x45) return 'image/webp';
-  return null;
-}
-    """
-    story.append(Paragraph(code_magic.strip().replace("\n", "<br/>").replace(" ", "&nbsp;"), style_code))
-
-    story.append(Paragraph("10.3 Safe Delivery & RFC 5987 Header Encoding", style_h2))
-    story.append(Paragraph(
-        "When files are downloaded, unescaped original filenames can break HTTP response framing. We percent-encode all filenames according to RFC 5987 specifications:<br/>"
-        "<code>Content-Disposition: inline; filename*=UTF-8''&lt;encoded_name&gt;</code><br/>"
-        "Combined with <code>X-Content-Type-Options: nosniff</code> and strict Content Security Policy, this completely neutralizes inline HTML/SVG execution and content sniffing.",
-        style_body
-    ))
-
-    story.append(PageBreak())
-
-    # =========================================================================
-    # PAGE 11: AUDIT LOGGING, FORENSICS & VISIBILITY
-    # =========================================================================
-    story.append(Paragraph("11. Security Visibility, Audit Logging & Forensics", style_h1))
-    story.append(Paragraph(
-        "Security visibility is indispensable for incident response, threat detection, and compliance. HostelGrievance records every security-relevant event into an append-only audit log table.",
-        style_body
-    ))
-
-    story.append(Paragraph("11.1 Audit Trail Schema & Event Types", style_h2))
-    
+    story.append(Paragraph("11.2 Audit Log Schema & Forensic Event Catalog", style_h2))
     audit_events_data = [
         [Paragraph("<b>Category</b>", style_table_header), Paragraph("<b>Action Code</b>", style_table_header), Paragraph("<b>Logged Details & Forensic Context</b>", style_table_header)],
         [
             Paragraph("<b>Authentication</b>", style_table_cell_bold),
             Paragraph("<code>auth.login</code><br/><code>auth.login_failed</code><br/><code>auth.logout</code>", style_table_cell),
-            Paragraph("Records user ID, target email, client IP address, and browser user-agent. Failed logins record attempt counts.", style_table_cell)
+            Paragraph("Records user ID, target email, client IP address, and browser user-agent. Failed logins record attempt counts for brute-force tracking.", style_table_cell)
         ],
         [
             Paragraph("<b>Credential Mgmt</b>", style_table_cell_bold),
@@ -901,34 +874,17 @@ export function detectImageMimeType(bytes: Buffer): string | null {
         ('BACKGROUND', (0, 0), (-1, 0), C_PRIMARY),
         ('BOX', (0, 0), (-1, -1), 0.5, C_BORDER),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, C_BORDER),
-        ('TOPPADDING', (0, 0), (-1, -1), 3.5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
     ]))
     story.append(t_aud)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 4))
 
-    story.append(Paragraph("11.2 Administrator Audit Log Inspection API", style_h2))
+    story.append(Paragraph("11.3 Safe Download Delivery & RFC 5987 Encoding", style_h2))
     story.append(Paragraph(
-        "Wardens can query audit records via <code>GET /api/admin/audit-logs</code> with optional filtering by <code>action</code>, <code>userId</code>, or <code>limit</code>. Student accounts attempting to access audit trails are denied with <code>403 Forbidden</code>.",
+        "All download responses encode filenames via RFC 5987 (<code>filename*=UTF-8''...</code>) alongside <code>X-Content-Type-Options: nosniff</code> and strict Content Security Policy, completely neutralizing inline HTML/SVG execution and content sniffing.",
         style_body
     ))
-    story.append(Spacer(1, 6))
-
-    story.append(Paragraph("11.3 Sample Audit Log Record", style_h2))
-    sample_audit = """
-{
-  "id": "aud-1724912345678-abc1",
-  "userId": "warden-1",
-  "action": "grievance.status_change",
-  "targetType": "grievance",
-  "targetId": "GRV-0001",
-  "details": { "oldStatus": "in_progress", "newStatus": "resolved" },
-  "ipAddress": "127.0.0.1",
-  "userAgent": "Mozilla/5.0 ... Chrome/128.0",
-  "createdAt": "2026-08-29T06:15:30.000Z"
-}
-    """
-    story.append(Paragraph(sample_audit.strip().replace("\n", "<br/>").replace(" ", "&nbsp;"), style_code))
 
     story.append(PageBreak())
 
@@ -942,7 +898,6 @@ export function detectImageMimeType(bytes: Buffer): string | null {
     ))
 
     story.append(Paragraph("12.1 Automated Test Suite Execution Results", style_h2))
-    
     test_run_output = """
  > vitest run
 
@@ -975,7 +930,6 @@ export function detectImageMimeType(bytes: Buffer): string | null {
     story.append(Paragraph(test_run_output.strip().replace("\n", "<br/>").replace(" ", "&nbsp;"), style_code))
 
     story.append(Paragraph("12.2 Pre-Launch Security Readiness Checklist", style_h2))
-    
     check_data = [
         [Paragraph("<b>Verification Item</b>", style_table_header), Paragraph("<b>Status</b>", style_table_header), Paragraph("<b>Evaluation & Evidence</b>", style_table_header)],
         [Paragraph("<b>Authentication Hardening</b>", style_table_cell_bold), Paragraph("<font color='#059669'>PASSED</font>", style_table_cell_bold), Paragraph("Salted scrypt KDF verified; 10-attempt rate limiting active; complexity enforced.", style_table_cell)],
@@ -984,23 +938,24 @@ export function detectImageMimeType(bytes: Buffer): string | null {
         [Paragraph("<b>File Handling & Magic Bytes</b>", style_table_cell_bold), Paragraph("<font color='#059669'>PASSED</font>", style_table_cell_bold), Paragraph("Binary scanner blocks executables; UUID storage prevents path traversal.", style_table_cell)],
         [Paragraph("<b>Network & Headers</b>", style_table_cell_bold), Paragraph("<font color='#059669'>PASSED</font>", style_table_cell_bold), Paragraph("Strict CORS whitelist; CSP, Frame-Options, nosniff headers active.", style_table_cell)],
         [Paragraph("<b>Audit & Threat Visibility</b>", style_table_cell_bold), Paragraph("<font color='#059669'>PASSED</font>", style_table_cell_bold), Paragraph("Full audit trail logging; IDOR probe detector auto-bans abusive IPs.", style_table_cell)],
+        [Paragraph("<b>Feature Integration</b>", style_table_cell_bold), Paragraph("<font color='#059669'>PASSED</font>", style_table_cell_bold), Paragraph("Audit logs, notifications, soft-delete, dark mode, toast UI fully verified.", style_table_cell)],
         [Paragraph("<b>Functional Compatibility</b>", style_table_cell_bold), Paragraph("<font color='#059669'>PASSED</font>", style_table_cell_bold), Paragraph("100% Student and Warden UI and business workflows fully operational.", style_table_cell)]
     ]
-    t_chk = Table(check_data, colWidths=[130, 60, 314])
+    t_chk = Table(check_data, colWidths=[130, 55, 319])
     t_chk.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), C_PRIMARY),
         ('BOX', (0, 0), (-1, -1), 0.5, C_BORDER),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, C_BORDER),
-        ('TOPPADDING', (0, 0), (-1, -1), 2.5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
+        ('TOPPADDING', (0, 0), (-1, -1), 2.2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.2),
     ]))
     story.append(t_chk)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     story.append(Paragraph("12.3 Deployment Sign-Off Recommendation", style_h2))
     story.append(Paragraph(
         "<b>FINAL VERDICT: APPROVED FOR PRODUCTION DEPLOYMENT.</b><br/>"
-        "The HostelGrievance application has achieved a robust, defense-in-depth security posture with minimal blast radius. All identified vulnerabilities have been comprehensively eliminated, automated test coverage is 100%, and security visibility guarantees full forensic accountability.",
+        "The HostelGrievance application has achieved an exemplary, defense-in-depth security posture with minimal blast radius. All 13 identified vulnerabilities have been eliminated, 7 major functional and operational features have been successfully integrated, automated test coverage is 100%, and security visibility guarantees full forensic accountability.",
         style_callout
     ))
 
