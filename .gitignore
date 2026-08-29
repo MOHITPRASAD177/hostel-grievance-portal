@@ -17,11 +17,12 @@ dist/
 .vite/
 
 # ========================
-# SQLite database & uploads
-# (never commit production data)
+# Uploads (user-generated files)
 # ========================
-data/
 uploads/
+
+# NOTE: data/ (the SQLite database) IS committed intentionally
+# so reviewers can run the project without running db:init
 
 # ========================
 # Environment & secrets
